@@ -1,0 +1,30 @@
+# .github/workflows/seed-images.yml
+# Run ONCE by the author (Actions tab -> Seed lab images -> Run workflow) to publish the
+# app images the lab uses into this repo's GitHub Container Registry (ghcr.io):
+#   app:v1.5           (current stable)
+#   app:v2.0-staging   (candidate the learner will promote)
+name: Seed lab images
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    env:
+      IMG: ghcr.io/${{ github.repository }}/app
+    steps:
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Publish v1.5 (stable) and v2.0-staging (candidate)
+        run: |
+          set -e
+          IMGL=$(echo "$IMG" | tr '[:upper:]' '[:lower:]')   # ghcr requires lowercase
+          docker pull mcr.microsoft.com/azuredocs/aks-helloworld:v1
+          docker tag  mcr.microsoft.com/azuredocs/aks-helloworld:v1 "$IMGL:v1.5"
+          docker push "$IMGL:v1.5"
+          docker pull mcr.microsoft.com/azuredocs/aks-helloworld:v2
+          docker tag  mcr.microsoft.com/azuredocs/aks-helloworld:v2 "$IMGL:v2.0-staging"
+          docker push "$IMGL:v2.0-staging"
+          echo "Seeded $IMGL:v1.5 and $IMGL:v2.0-staging"
