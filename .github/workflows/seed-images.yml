@@ -3,6 +3,8 @@
 # app images the lab uses into this repo's GitHub Container Registry (ghcr.io):
 #   app:v1.5           (current stable)
 #   app:v2.0-staging   (candidate the learner will promote)
+# Both are built from a single stable Microsoft base image, so there is no dependency on a
+# tag that might not exist, and the two versions are visibly different for the learner.
 name: Seed lab images
 on:
   workflow_dispatch:
@@ -17,14 +19,14 @@ jobs:
     steps:
       - name: Log in to GitHub Container Registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-      - name: Publish v1.5 (stable) and v2.0-staging (candidate)
+      - name: Build and publish v1.5 (stable) and v2.0-staging (candidate)
         run: |
           set -e
           IMGL=$(echo "$IMG" | tr '[:upper:]' '[:lower:]')   # ghcr requires lowercase
-          docker pull mcr.microsoft.com/azuredocs/aks-helloworld:v1
-          docker tag  mcr.microsoft.com/azuredocs/aks-helloworld:v1 "$IMGL:v1.5"
+          printf 'FROM mcr.microsoft.com/azuredocs/aks-helloworld:v1\nENV TITLE="Globomantics App - v1.5"\n' > Dockerfile.v15
+          printf 'FROM mcr.microsoft.com/azuredocs/aks-helloworld:v1\nENV TITLE="Globomantics App - v2.0"\n' > Dockerfile.v20
+          docker build -t "$IMGL:v1.5"         -f Dockerfile.v15 .
+          docker build -t "$IMGL:v2.0-staging" -f Dockerfile.v20 .
           docker push "$IMGL:v1.5"
-          docker pull mcr.microsoft.com/azuredocs/aks-helloworld:v2
-          docker tag  mcr.microsoft.com/azuredocs/aks-helloworld:v2 "$IMGL:v2.0-staging"
           docker push "$IMGL:v2.0-staging"
           echo "Seeded $IMGL:v1.5 and $IMGL:v2.0-staging"
