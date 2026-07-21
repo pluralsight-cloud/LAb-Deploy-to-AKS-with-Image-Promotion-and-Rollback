@@ -1,0 +1,31 @@
+# .github/workflows/promote-image-to-production.yml
+# The LEARNER triggers this from the Actions tab. It promotes the tested staging image
+# to the production tag (v2.0-staging -> v2.0) in this repo's GitHub Container Registry.
+name: Promote image to production
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to promote to production"
+        required: true
+        default: "v2.0"
+permissions:
+  contents: read
+  packages: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    env:
+      IMG: ghcr.io/${{ github.repository }}/app
+    steps:
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Promote staging image to the production tag
+        run: |
+          set -e
+          IMGL=$(echo "$IMG" | tr '[:upper:]' '[:lower:]')
+          V="${{ github.event.inputs.version }}"
+          docker pull "$IMGL:${V}-staging"
+          docker tag  "$IMGL:${V}-staging" "$IMGL:${V}"
+          docker push "$IMGL:${V}"
+          echo "Promoted ${V}-staging -> ${V} in $IMGL"
